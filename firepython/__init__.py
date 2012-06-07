@@ -9,4 +9,4 @@ For usage see ``README.txt`` or visit the `github homepage`_.
 
 __api_version__ = '1.0'
 # ^--- corresponds to api version of firelogger
-__version__ = '1.0.0'   # for python package releases
+__version__ = '1.0'   # for python package releases
