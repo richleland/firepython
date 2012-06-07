@@ -365,8 +365,9 @@ class FirePythonDjango(FirePythonBase):
         request.firepython_set_extension_data = self._extension_data.__setitem__
 
     def process_view(self, request, callback, callback_args, callback_kwargs):
-        args = (request, ) + callback_args
-        return self._profile_wrap(callback)(*args, **callback_kwargs)
+        args = (request,) + callback_args
+        callback = self._profile_wrap(callback)
+        return None
 
     def process_response(self, request, response):
         check = self._check(request.META)
@@ -375,7 +376,7 @@ class FirePythonDjango(FirePythonBase):
                                  self._client_message)
         if not check:
             return response
-            
+
         profile = self._prepare_profile()
         self._finish()
         self._flush_records(response.__setitem__, profile, self._extension_data)
@@ -431,11 +432,11 @@ class FirePythonWSGI(FirePythonBase):
 
         if self._appstats_enabled:
             environ['firepython.appstats_enabled'] = True
-            
-        if check: 
+
+        if check:
             self._start()
             environ['firepython.set_extension_data'] = extension_data.__setitem__
-            
+
         # run app
         try:
             # the nested try-except block within
@@ -454,7 +455,7 @@ class FirePythonWSGI(FirePythonBase):
                 raise
         finally:
             # Output the profile first, so we can see any errors in profiling.
-            if check: 
+            if check:
                 profile = self._prepare_profile()
                 self._finish()
                 self._flush_records(add_header, profile, extension_data)
