@@ -38,6 +38,7 @@ __all__ = [
 jsonpickle.load_backend('django.utils.simplejson', 'dumps',
                         'loads', ValueError)
 
+
 class FirePythonBase(object):
 
     def __init__(self):
@@ -125,7 +126,7 @@ class FirePythonBase(object):
         return (exc_type, exc_value, exc_traceback)
 
     def _handle_internal_exception(self, e):
-        if CONST.RAZOR_MODE: # in razor mode hurt web server
+        if CONST.RAZOR_MODE:  # in razor mode hurt web server
             raise e
         # in non-razor mode report internal error to firepython addon
         exc_info = self._sanitize_exc_info(sys.exc_info())
@@ -148,10 +149,10 @@ class FirePythonBase(object):
             # __str__ implementations on various objects
             errors = [self._handle_internal_exception(e)]
             try:
-                data = jsonpickle.encode({"errors": errors },
+                data = jsonpickle.encode({"errors": errors},
                                          unpicklable=False,
                                          max_depth=CONST.JSONPICKLE_DEPTH)
-            except Exception, e:
+            except Exception:
                 # even unable to serialize error message
                 data = jsonpickle.encode(
                         {"errors": {
@@ -234,7 +235,7 @@ class FirePythonBase(object):
                 while t:
                     try:
                         d = {}
-                        for k,v in t.tb_frame.f_locals.iteritems():
+                        for k, v in t.tb_frame.f_locals.iteritems():
                             if CONST.DEEP_LOCALS:
                                 d[unicode(k)] = v
                             else:
@@ -277,8 +278,10 @@ class FirePythonBase(object):
         except ImportError:
             import profile
         self._prof = profile.Profile()
+
         def prof_wrapper(*args, **kwargs):
             return self._prof.runcall(func, *args, **kwargs)
+
         return prof_wrapper
 
     def _prepare_profile(self):
@@ -365,8 +368,8 @@ class FirePythonDjango(FirePythonBase):
         request.firepython_set_extension_data = self._extension_data.__setitem__
 
     def process_view(self, request, callback, callback_args, callback_kwargs):
-        args = (request, ) + callback_args
-        return self._profile_wrap(callback)(*args, **callback_kwargs)
+        callback = self._profile_wrap(callback)
+        return None
 
     def process_response(self, request, response):
         check = self._check(request.META)
@@ -375,7 +378,7 @@ class FirePythonDjango(FirePythonBase):
                                  self._client_message)
         if not check:
             return response
-            
+
         profile = self._prepare_profile()
         self._finish()
         self._flush_records(response.__setitem__, profile, self._extension_data)
@@ -408,7 +411,7 @@ class FirePythonWSGI(FirePythonBase):
     def __call__(self, environ, start_response):
         check = self._check(environ)
         if not check and not self._client_message:
-            return self.app(environ, start_response) # a quick path
+            return self.app(environ, start_response)  # a quick path
 
         # firepython is enabled or we have a client message we want to communicate in headers
         client_message = self._client_message
@@ -417,6 +420,7 @@ class FirePythonWSGI(FirePythonBase):
         closure = ["200 OK", [], None]
         extension_data = {}  # Collect extension data here
         sio = StringIO()
+
         def faked_start_response(_status, _headers, _exc_info=None):
             closure[0] = _status
             closure[1] = _headers
@@ -431,11 +435,11 @@ class FirePythonWSGI(FirePythonBase):
 
         if self._appstats_enabled:
             environ['firepython.appstats_enabled'] = True
-            
-        if check: 
+
+        if check:
             self._start()
             environ['firepython.set_extension_data'] = extension_data.__setitem__
-            
+
         # run app
         try:
             # the nested try-except block within
@@ -454,14 +458,14 @@ class FirePythonWSGI(FirePythonBase):
                 raise
         finally:
             # Output the profile first, so we can see any errors in profiling.
-            if check: 
+            if check:
                 profile = self._prepare_profile()
                 self._finish()
                 self._flush_records(add_header, profile, extension_data)
 
         # start responding
         write = start_response(*closure)
-        if sio.tell(): # position is not 0
+        if sio.tell():  # position is not 0
             sio.seek(0)
             write(sio.read())
         # return output
